@@ -40,14 +40,14 @@ sed -i 's/，/;/g' data/kuairec_caption_category.csv
 
 ```
 .
-├── [EDA.ipynb](EDA.ipynb)                `Exploratory Data Analysis`
+├── EDA.ipynb   `Exploratory Data Analysis`
 ├── models/
 │   ├── hp_optimizer/        `Hyperparameter tuning trials`
 │   ├── trained_models/      `Saved trained models`
-│   ├── [ncf.ipynb](models/ncf.ipynb) `NCF model trained and tested on small_matrix`
-│   └── [ncf-extended.ipynb](models/ncf-extended.ipynb)      `NCF model trained on big_matrix, tested on small_matrix`
-├── [environment.yml](environment.yml)
-└── [README.md](README.md)                
+│   ├── ncf.ipynb  `NCF model trained and tested on small_matrix`
+│   └── ncf-extended.ipynb  `NCF model trained on big_matrix, tested on small_matrix`
+├── environment.yml
+└── README.md         
 ```
 ---
 
