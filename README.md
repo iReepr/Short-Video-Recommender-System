@@ -37,6 +37,9 @@ sed -i 's/，/;/g' data/kuairec_caption_category.csv
 ---
 
 ## Project Structure
+
+```
+.
 ├── [EDA.ipynb](EDA.ipynb)                `Exploratory Data Analysis`
 ├── models/
 │   ├── hp_optimizer/        `Hyperparameter tuning trials`
@@ -45,7 +48,7 @@ sed -i 's/，/;/g' data/kuairec_caption_category.csv
 │   └── [ncf-extended.ipynb](models/ncf-extended.ipynb)      `NCF model trained on big_matrix, tested on small_matrix`
 ├── [environment.yml](environment.yml)
 └── [README.md](README.md)                
-
+```
 ---
 
 ## Experiments
