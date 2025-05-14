@@ -118,15 +118,15 @@ All features including tags, user attributes, and popularity scores were merged 
 **Score popularity**
 To capture the overall appeal of each video, I engineered a popularity score from `user_item_daily.csv` using a linear regression model. It was trained to predict the average watch_ratio of a video based on aggregated engagement metrics such as:
 
-Number of impressions (show_cnt)
+* Number of impressions (show_cnt)
 
-Plays
+* Plays
 
-Likes
+* Likes
 
-Shares
+* Shares
 
-Comments
+* Comments
 
 The resulting score was used as an additional numeric feature for each video, providing a supervised proxy for popularity.
 
