@@ -131,27 +131,28 @@ To capture the overall appeal of each video, I engineered a popularity score fro
 The resulting score was used as an additional numeric feature for each video, providing a supervised proxy for popularity.
 
 **Video Tag Encoding**
+
 Video metadata included tag IDs ranging from 0 to 30. These were converted into multi-hot vectors using binary encoding, allowing each video to be associated with multiple content categories simultaneously.
 
 **User Feature Transformation**
+
 Categorical features in `user_features.csv`, including user_active_degree, were encoded as integers using label encoding. These features were later used as input IDs to the embedding layers of the model.
 
-
 **Watch Ratio Rescale**
+
 The watch_ratio was highly skewed, so I applied a logarithmic transformation (log(1 + x)) to reduce the effect of extreme values and improve learning stability during regression.
 
 **Dataset Preparation for Training**
+
 The final dataset was split into training and test sets (80/20 split). The training set was further divided into training and validation subsets. TensorFlow tf.data.Dataset pipelines were used to prepare and batch the data efficiently.
 
 Each sample was represented as:
 
-Categorical IDs: user_id, video_id, and user attributes
+* Categorical IDs: user_id, video_id, and user attributes
 
-Dense features: popularity_score, tag_multi_hot
+* Dense features: popularity_score, tag_multi_hot
 
-Target: the log-transformed watch_ratio
-
-
+* Target: the log-transformed watch_ratio
 
 ---
 
