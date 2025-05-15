@@ -210,13 +210,13 @@ To evaluate the performance of the NCF model, I implemented a global mean baseli
 The baseline model predicts the same value (the global mean) for every input. This simple approach serves as a reference point to compare the performance of my model. 
 
 ---
-## 4. **TOP-K Recommendations**
+### 4. **TOP-K Recommendations**
 
 A function to generate top-k recommendations per user using the trained model and the required input features is given.
 
 ---
 
-## Results
+### 5. **Results**
 
 
 | Dataset Used (Train → Test)     | Model      | NDCG@10 | MAE@10 | RMSE@10 | Serendipity@10 | Avg Popularity@10 |
