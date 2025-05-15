@@ -250,7 +250,7 @@ Nonetheless, since the project goal is to **recommend videos that the user is li
 ## Future Work
 
 * **Explore hybrid models further**: Test other hybrid techniques (e.g., weighted ensemble models) to better combine collaborative and content-based features.
-* **Weighted tag encoding**: Instead of using uniform multi-hot encoding for video tags, experiment with weighted tag vectors using watch ratio mean (see [tag_by_watch_ratio.png](images/tag_by_watch_ratio.png)) to better capture the importance of each tag in the recommendation process. This could help the model differentiate between dominant and less relevant tags for each video.
+* **Weighted tag encoding**: Instead of using uniform multi-hot encoding for video tags, experiment with weighted tag vectors using watch ratio mean (see [tag_by_watch_ratio.png](images/tag_by_watch_ratio.png)) to better capture the importance of each tag in the recommendation process. This could help the model differentiate between dominant and less relevant tags for each video. # TODO
 
 ---
 
