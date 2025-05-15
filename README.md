@@ -11,8 +11,15 @@ Develop a recommender system that suggests short videos to users based on user p
 
 Create the Conda environment using the `environment.yml` file:
 
+On linux:
+
 ```bash
 conda env create -f environment.yml
+```
+
+On mac:
+```bash
+conda env create -f environment-mac.yml
 ```
 
 Activate the Conda environment:
@@ -45,6 +52,7 @@ sed -i 's/，/;/g' data/kuairec_caption_category.csv
 │   ├── ncf.ipynb  `NCF model trained and tested on small_matrix`
 │   └── ncf-extended.ipynb  `NCF model trained on big_matrix, tested on small_matrix`
 ├── environment.yml
+├── environment-mac.yml
 └── README.md         
 ```
 ---
