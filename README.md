@@ -1,11 +1,9 @@
 
 # Short Video Recommender System (KuaiRec)
 
-## Introduction
+# Objective
+Develop a recommender system that suggests short videos to users based on user preferences, interaction histories, and video content using the KuaiRec dataset. The challenge is to create a personalised and scalable recommendation engine similar to those used in platforms like TikTok or Kuaishou.
 
-The goal of this project is to develop a video recommender system using different approaches, including **Collaborative Filtering** and **Neural Collaborative Filtering (NCF)**. In this project, I explore several methods to build an efficient and accurate recommendation system that can predict videos a user would likely enjoy based on their previous interactions. The project uses a combination of data preprocessing, feature engineering, and model development to create an optimal solution.
-
----
 
 ## Setup and Installation
 
@@ -53,7 +51,7 @@ sed -i 's/，/;/g' data/kuairec_caption_category.csv
 
 ## Experiments
 
-The initial analysis of the dataset revealed a rich set of user-item interaction logs, while content metadata such as video descriptions was more limited or sparse. Although a good number of tags were available, user behavior showed a strong bias toward a single dominant tag (e.g., Tag 28), which limited the diversity of content signals. For these reasons, I chose to work with a **Collaborative Filtering** approach, which leverages interaction patterns rather than item content .
+The initial analysis of the dataset revealed a rich set of user-item interaction logs, while content metadata such as video descriptions was more limited. Although a good number of tags were available, user behavior showed a strong bias toward a single dominant tag (e.g., Tag 28), which limited the diversity of content signals. For these reasons, I chose to work with a **Collaborative Filtering** approach, which leverages interaction patterns rather than item content .
 
 I structured my experimentation into three key stages:
 
@@ -71,7 +69,7 @@ However, I struggled to obtain good results with this approach.
 
 Given the limitations of ALS and the hybrid model, I transitioned to a Neural Collaborative Filtering (NCF) model to improve the flexibility and expressiveness of the recommendation system. One key observation was that the ALS model's use of a binary "like" signal (based on a thresholded watch ratio) was not fully capturing the nuances of user preferences, especially for users with less consistent behavior or videos with subtle interactions. To address this, I decided to use ratings instead of binary values. The watch ratio itself was treated as a continuous rating, which allowed for a more refined representation of user-item interactions.
 
-Therefore, I implemented a **Neural Collaborative Filtering (NCF)** model, inspired by the paper [“Neural Collaborative Filtering”](https://arxiv.org/abs/1708.05031).
+Therefore, I implemented a **Neural Collaborative Filtering (NCF)** model, inspired by the paper [“Neural Collaborative Filtering”](https://arxiv.org/pdf/1708.05031).
 
 NCF allowed me to incorporate rich feature sets for both users and items, making it a more expressive model for learning user preferences.
 
@@ -130,6 +128,7 @@ To capture the overall appeal of each video, I engineered a popularity score fro
 
 The resulting score was used as an additional numeric feature for each video, providing a supervised proxy for popularity.
 
+Distribution of popularity score: [popularity_score.png](images/popularity_score.png)
 **Video Tag Encoding**
 
 Video metadata included tag IDs ranging from 0 to 30. These were converted into multi-hot vectors using binary encoding, allowing each video to be associated with multiple content categories simultaneously.
@@ -192,7 +191,7 @@ The model consists of the following key components:
 
 #### Training and Evaluation
 
-I trained the model using the train and validation dataframe, employing early stopping to prevent overfitting. To evaluate the model’s performance, I implemented and used several metrics including NDCG@k, MAE, RMSE, Serendipity, and Popularity
+I trained the model using the train and validation dataframe, employing early stopping to prevent overfitting. To evaluate the model’s performance, I implemented and used several metrics including NDCG@k, MAE, RMSE, [Serendipity](images/serendipity.png), and Popularity
 
 #### Hyperparameter Tuning
 
@@ -217,7 +216,32 @@ A function to generate top-k recommendations per user using the trained model an
 ---
 
 ## Results
-TODO
+
+
+| Dataset Used (Train → Test)     | Model      | NDCG@10 | MAE@10 | RMSE@10 | Serendipity@10 | Avg Popularity@10 |
+|---------------------------------|------------|---------|--------|---------|----------------|-------------------|
+| Small → Small                   | NCF        | 0.8971  | 0.7344 | 1.0807  | 0.0208         | 0.9427            |
+| Small (Filtered Watch Ratio) → Small | NCF   | 0.8635  | 0.6360 | 0.9397  | 0.0305         | 0.9373            |
+| Small → Small                   | Baseline   | 0.8166  | 0.4802 | 0.6760  | 0.0616         | 0.9035            |
+| Big → Small                     | NCF        | 0.8772  | 0.9249 | 1.3514  | 0.0128         | 1.2288            |
+| Big → Small                     | Baseline   | 0.8142  | 0.5043 | 0.6945  | 0.1243         | 1.0871            |
+
+
+---
+
+
+The **NCF model** clearly delivers superior ranking performance over the baseline model, achieving a nearly **10% improvement in NDCG\@10**. This demonstrates its strength in generating top-k recommendations that align with user preferences.
+
+However, when looking at **MAE** and **RMSE**, the baseline outperforms NCF. This might seem contradictory at first, but is explained by the **distribution of the watch ratio**, which is heavily concentrated around the mean in both training and testing sets (see [train_watch_ratio.png](images/train_watch_ratio.png) and [test_watch_ratio](images/test_watch_ratio.png)). The baseline simply predicts the global mean watch ratio, which minimizes average error in such a skewed distribution — hence, lower MAE/RMSE.
+
+When filtering out extreme values of watch ratio (e.g., above the 85th percentile), **NCF's MAE and RMSE improve**, but at the cost of a slight drop in NDCG. 
+
+On the **serendipity** and **average popularity** metrics, both models show **limited diversity** in recommendations. The recommendations tend to favor **popular videos**, as reflected in the high popularity scores. This aligns with observations from the ["KuaiRec paper"](https://arxiv.org/pdf/2202.10842), which warns about *popularity bias* in collaborative filtering: users are often exposed to, and trained on, a limited set of popular items, leading models to overfit on them. In our case, most users also watched similar tag categories, particularly tag 28 (see [feats.png](images/feats.png)) which further reinforces the popularity bias.
+
+Therefore, while NCF excels in **ranking relevant videos**, it doesn't take much risk in **exploring less popular or niche content**, which slightly limits its ability to diversify recommendations. This is a known trade-off in collaborative filtering under biased exposure, as highlighted in the KuaiRec dataset analysis.
+
+Nonetheless, since the project goal is to **recommend videos that the user is likely to enjoy**, NCF’s strong NDCG performance suggests that it fulfills the objective effectively.
+
 
 
 ---
@@ -225,7 +249,7 @@ TODO
 ## Future Work
 
 * **Explore hybrid models further**: Test other hybrid techniques (e.g., weighted ensemble models) to better combine collaborative and content-based features.
-TODO
+* **Weighted tag encoding**: Instead of using uniform multi-hot encoding for video tags, experiment with weighted tag vectors using watch ratio mean (see [tag_by_watch_ratio.png](images/tag_by_watch_ratio.png)) to better capture the importance of each tag in the recommendation process. This could help the model differentiate between dominant and less relevant tags for each video.
 
 ---
 
