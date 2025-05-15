@@ -129,6 +129,7 @@ To capture the overall appeal of each video, I engineered a popularity score fro
 The resulting score was used as an additional numeric feature for each video, providing a supervised proxy for popularity.
 
 Distribution of popularity score: [popularity_score.png](images/popularity_score.png)
+
 **Video Tag Encoding**
 
 Video metadata included tag IDs ranging from 0 to 30. These were converted into multi-hot vectors using binary encoding, allowing each video to be associated with multiple content categories simultaneously.
