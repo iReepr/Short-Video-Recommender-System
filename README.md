@@ -49,7 +49,7 @@ sed -i 's/，/;/g' data/kuairec_caption_category.csv
 ├── models/
 │   ├── hp_optimizer/        `Hyperparameter tuning trials`
 │   ├── trained_models/      `Saved trained models`
-│   ├── ncf.ipynb  `NCF model trained and tested on small_matrix`
+│   ├── ncf.ipynb  `NCF model trained and tested on small_matrix (experimental)`
 │   └── ncf-extended.ipynb  `NCF model trained on big_matrix, tested on small_matrix`
 ├── environment.yml
 ├── environment-mac.yml
@@ -61,21 +61,20 @@ sed -i 's/，/;/g' data/kuairec_caption_category.csv
 
 The initial analysis of the dataset revealed a rich set of user-item interaction logs, while content metadata such as video descriptions was more limited. Although a good number of tags were available, user behavior showed a strong bias toward a single dominant tag (e.g., Tag 28), which limited the diversity of content signals. For these reasons, I chose to work with a **Collaborative Filtering** approach, which leverages interaction patterns rather than item content .
 
-I structured my experimentation into three key stages:
-
 **1. Collaborative Filtering with ALS**
 
-I first implemented **ALS**, a matrix factorization method optimized for implicit feedback, as introduced in class. To adapt it to our scenario, I followed the methodology seen in lectures: I constructed an implicit user-item matrix by introducing a binary "like" column. A video was marked as "liked" by a user if their watch ratio was above their personal average watch ratio across all videos they had watched.
+I first implemented **ALS**, a matrix factorization method optimized for implicit feedback, as introduced in class. I constructed an implicit user-item matrix by introducing a binary "like" column. A video was marked as "liked" by a user if their watch ratio was above their personal average watch ratio across all videos they had watched.
 
-ALS allowed me to make use of user-item interactions effectively, but one of its key limitations is its inability to incorporate additional  features in a flexible way. This motivated the need to explore more feature-rich architectures later in the project.
+ALS allowed me to make use of user-item interactions effectively, but one of its key limitations is its inability to incorporate additional features in a flexible way. This motivated the need to explore more feature-rich architectures later in the project.
 
 **2. Hybrid Model: ALS + TF-IDF with Cosine Similarity**
+
 To enhance the collaborative signal with content information, I tested a hybrid method: I computed TF-IDF vectors based on video tags and metadata, and used cosine similarity to capture item-item semantic relationships. These similarity scores were then combined with ALS predictions.
 However, I struggled to obtain good results with this approach.
 
 **3. Neural Collaborative Filtering (NCF)**
 
-Given the limitations of ALS and the hybrid model, I transitioned to a Neural Collaborative Filtering (NCF) model to improve the flexibility and expressiveness of the recommendation system. One key observation was that the ALS model's use of a binary "like" signal (based on a thresholded watch ratio) was not fully capturing the nuances of user preferences, especially for users with less consistent behavior or videos with subtle interactions. To address this, I decided to use ratings instead of binary values. The watch ratio itself was treated as a continuous rating, which allowed for a more refined representation of user-item interactions.
+Given the limitations of ALS and the hybrid model, I transitioned to a Neural Collaborative Filtering (NCF) approach, which allowed me to incorporate all the available features from the provided datasets more flexibly and effectively. One key observation was that the ALS model's use of a binary "like" signal (based on a thresholded watch ratio) was not fully capturing the nuances of user preferences, especially for users with less consistent behavior or videos with subtle interactions. To address this, I decided to use ratings instead of binary values. The watch ratio itself was treated as a continuous rating, which allowed for a more refined representation of user-item interactions.
 
 Therefore, I implemented a **Neural Collaborative Filtering (NCF)** model, inspired by the paper [“Neural Collaborative Filtering”](https://arxiv.org/pdf/1708.05031).
 
@@ -85,12 +84,11 @@ NCF allowed me to incorporate rich feature sets for both users and items, making
 
 One of the main advantages of NCF is its ability to handle diverse input features. In my implementation, I incorporated:
 
+* User features (from `user_features.csv`), providing more context about user profiles and behavior patterns.
 
-* User features (from user_features.csv), providing more context about user profiles and behavior patterns.
+* Video tags (from `item_categories.csv`), which helped encode content-based information and thematic relevance.
 
-* Video tags (from item_categories.csv), which helped encode content-based information and thematic relevance.
-
-* A custom popularity score (derived from item_daily_categories.csv), designed to capture the overall attractiveness of a video based on engagement signals such as shows, plays, likes, shares, and comments. The popularity score was learned using a linear regression model trained to predict the average watch ratio of each video. As inputs, I used aggregate metrics such as show counts, play counts, number of likes, shares, and comments. The resulting score helped capture implicit popularity patterns and was used as an additional item-level input to the neural model.
+* A custom popularity score (derived from `item_daily_categories.csv`), designed to capture the overall attractiveness of a video based on engagement signals such as shows, plays, likes, shares, and comments. The popularity score was learned using a linear regression model trained to predict the average watch ratio of each video. As inputs, I used aggregate metrics such as show counts, play counts, number of likes, shares, and comments. The resulting score helped capture implicit popularity patterns and was used as an additional item-level input to the neural model.
 
 #### NCF Architecture
 
@@ -109,8 +107,11 @@ Given its flexibility and capacity to integrate multiple feature types, **NCF wa
 
 ## Methodology
 
-### 1. **Data Preprocessing**
+Initially, all experiments were conducted on the small_matrix for faster training and due to its dense user-item interactions. However, this setup was purely experimental, as the small_matrix only contains a limited subset of users and videos, which introduces cold start issues and limits generalization.
 
+To overcome these limitations, the focus of the analysis shifted to the big_matrix (as implemented in [ncf-extended.ipynb](models/ncf-extended.ipynb)), which includes a much larger and more diverse set of users and videos. 
+
+### 1. **Data Preprocessing**
 
 Missing values and duplicates were removed from all relevant datasets.
 Invalid timestamps were filtered out from the interaction logs.
@@ -200,7 +201,8 @@ The model consists of the following key components:
 
 #### Training and Evaluation
 
-I trained the model using the train and validation dataframe, employing early stopping to prevent overfitting. To evaluate the model’s performance, I implemented and used several metrics including NDCG@k, MAE, RMSE, [Serendipity](images/serendipity.png), and Popularity
+I trained the model using the train and validation dataframe, employing early stopping to prevent overfitting. To evaluate the model’s performance, I implemented and used several metrics including NDCG@k, MAE, RMSE, [Serendipity](images/serendipity.png), Popularity, and [Spearman correlation](https://en.wikipedia.org/wiki/Spearman's_rank_correlation_coefficient).
+For the baseline model, which outputs constant predictions for every video, the Spearman correlation is not defined. In this case, I assume a value of 0, representing the model’s complete inability to sort items by relevance.
 
 #### Hyperparameter Tuning
 
@@ -217,27 +219,47 @@ To evaluate the performance of the NCF model, I implemented a global mean baseli
 
 The baseline model predicts the same value (the global mean) for every input. This simple approach serves as a reference point to compare the performance of my model. 
 
+
+#### Popularity Baseline Model
+To further benchmark the NCF model, I implemented a Popularity Baseline model. This model ranks videos solely based on their average popularity scores computed from the test dataset.
+
 ---
 ### 4. **TOP-K Recommendations**
 
-A function to generate top-k recommendations per user using the trained model and the required input features is given.
+I provided a function to generate top-k recommendations per user in the file [ncf-extended.ipynb](models/ncf-extended.ipynb).  
+To use it, simply run the notebook cells up to the following cell:
+
+```python
+# Convert the tag columns into a list of multi-hot
+tag_cols = [f'tag_{i}' for i in range(31)]
+df['tag_multi_hot'] = df[tag_cols].values.tolist()
+test_df['tag_multi_hot'] = test_df[tag_cols].values.tolist()
+
+df.drop(columns=tag_cols, inplace=True)
+test_df.drop(columns=tag_cols, inplace=True)
+```
+
+Then, load the trained model (for example:  
+```python
+model = tf.keras.models.load_model('trained_models/NCF-extended.keras')
+```
+) 
+and use the provided function to generate the top-k recommendations.
 
 ---
 
 ### 5. **Results**
 
+For evaluation, I focus exclusively on the big_matrix → small_matrix setup, where the model is trained on the larger, more diverse dataset and tested on the smaller, dense subset.
 
-| Dataset Used (Train → Test)     | Model      | NDCG@10 | MAE@10 | RMSE@10 | Serendipity@10 | Avg Popularity@10 |
-|---------------------------------|------------|---------|--------|---------|----------------|-------------------|
-| Small → Small                   | NCF        | 0.8971  | 0.7344 | 1.0807  | 0.0208         | 0.9427            |
-| Small (Filtered Watch Ratio) → Small | NCF   | 0.8635  | 0.6360 | 0.9397  | 0.0305         | 0.9373            |
-| Small → Small                   | Baseline   | 0.8166  | 0.4802 | 0.6760  | 0.0616         | 0.9035            |
-| Big → Small                     | NCF        | 0.8772  | 0.9249 | 1.3514  | 0.0128         | 1.2288            |
-| Big → Small                     | Baseline   | 0.8142  | 0.5043 | 0.6945  | 0.1243         | 1.0871            |
+| Model             | NDCG@10 | MAE@10 | RMSE@10 | Serendipity@10 | Avg Popularity@10 | Spearman |
+|-------------------|---------|--------|---------|----------------|-------------------|----------|
+| NCF               | 0.8772  | 0.9249 | 1.3514  | 0.0128         | 1.2288            | 0.6201   |
+| Baseline          | 0.8142  | 0.5043 | 0.6945  | 0.1243         | 1.0871            | 0        |
+| PopularityBaseline| 0.7905  | 1.5349 | 1.7366  | 0.0000         | 1.2464            | 0.2454   |
 
 
 ---
-
 
 The **NCF model** clearly delivers superior ranking performance over the baseline model, achieving a nearly **10% improvement in NDCG\@10**. This demonstrates its strength in generating top-k recommendations that align with user preferences.
 
@@ -247,18 +269,19 @@ When filtering out extreme values of watch ratio (e.g., above the 85th percentil
 
 On the **serendipity** and **average popularity** metrics, both models show **limited diversity** in recommendations. The recommendations tend to favor **popular videos**, as reflected in the high popularity scores. This aligns with observations from the ["KuaiRec paper"](https://arxiv.org/pdf/2202.10842), which warns about *popularity bias* in collaborative filtering: users are often exposed to, and trained on, a limited set of popular items, leading models to overfit on them. In our case, most users also watched similar tag categories, particularly tag 28 (see [feats.png](images/feats.png)) which further reinforces the popularity bias.
 
-Therefore, while NCF excels in **ranking relevant videos**, it doesn't take much risk in **exploring less popular or niche content**, which slightly limits its ability to diversify recommendations. This is a known trade-off in collaborative filtering under biased exposure, as highlighted in the KuaiRec dataset analysis.
+Therefore, while NCF excels in **ranking relevant videos**, it doesn't take much risk in **exploring less popular or niche content**, which slightly limits its ability to diversify recommendations.
 
-Nonetheless, since the project goal is to **recommend videos that the user is likely to enjoy**, NCF’s strong NDCG performance suggests that it fulfills the objective effectively.
+Additionally, the NCF model demonstrates a strong overall alignment between predicted video rankings and actual user preferences, confirming its effectiveness in capturing meaningful ranking patterns. In contrast, the global mean baseline cannot differentiate between items and thus fails to produce any meaningful ranking. The Popularity Baseline shows some capacity to rank videos based on popularity but is notably less effective than NCF, which highlights that popularity alone does not necessarily align with individual user preferences.
 
-
+Nonetheless, since the project goal is to **recommend videos that the user is likely to enjoy**, the strong NDCG and Spearman results for NCF suggest that it effectively fulfills this objective.
 
 ---
 
 ## Future Work
 
 * **Explore hybrid models further**: Test other hybrid techniques (e.g., weighted ensemble models) to better combine collaborative and content-based features.
-* **Weighted tag encoding**: Instead of using uniform multi-hot encoding for video tags, experiment with weighted tag vectors using watch ratio mean (see [tag_by_watch_ratio.png](images/tag_by_watch_ratio.png)) to better capture the importance of each tag in the recommendation process. This could help the model differentiate between dominant and less relevant tags for each video. # TODO
+* **Weighted tag encoding**: Instead of using uniform multi-hot encoding for video tags, experiment with weighted tag vectors using watch ratio mean (see [tag_by_watch_ratio.png](images/tag_by_watch_ratio.png)) to better capture the importance of each tag in the recommendation process. This could help the model differentiate between dominant and less relevant tags for each video. 
+*N.B.: This approach was tested but did not significantly improve the diversity of recommended videos.*
 
 ---
 
