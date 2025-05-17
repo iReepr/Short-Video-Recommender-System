@@ -116,7 +116,7 @@ To overcome these limitations, the focus of the analysis shifted to the big_matr
 Missing values and duplicates were removed from all relevant datasets.
 Invalid timestamps were filtered out from the interaction logs.
 To avoid overloading the model with uninformative features, I examined the distribution of categorical variables in `user_features.csv`. Features where a single category represented over 90% of the values were removed, as they lacked variability and would not meaningfully contribute to learning user preferences.
-Columns that ended in `_range` (e.g., `age_range`) were also dropped to avoid redundancy with the original categorical variables.
+Columns that ended in `_range` (e.g., `follow_user_num_range`) were also dropped to avoid redundancy with the original categorical variables.
 
 All features including tags, user attributes, and popularity scores were merged with the main interaction dataset.
 
@@ -125,14 +125,10 @@ All features including tags, user attributes, and popularity scores were merged 
 **Score popularity**
 To capture the overall appeal of each video, I engineered a popularity score from `user_item_daily.csv` using a linear regression model. It was trained to predict the average watch_ratio of a video based on aggregated engagement metrics such as:
 
-* Number of impressions (show_cnt)
-
+* Number of impressions
 * Plays
-
 * Likes
-
 * Shares
-
 * Comments
 
 The resulting score was used as an additional numeric feature for each video, providing a supervised proxy for popularity.
@@ -141,7 +137,7 @@ Distribution of popularity score: [popularity_score.png](images/popularity_score
 
 **Video Tag Encoding**
 
-Video metadata included tag IDs ranging from 0 to 30. These were converted into multi-hot vectors using binary encoding, allowing each video to be associated with multiple content categories simultaneously.
+Video metadata included tags ranging from 0 to 30. These were converted into multi-hot vectors using binary encoding, allowing each video to be associated with multiple content categories simultaneously.
 
 **User Feature Transformation**
 
@@ -153,14 +149,12 @@ The watch_ratio was highly skewed, so I applied a logarithmic transformation (lo
 
 **Dataset Preparation for Training**
 
-The final dataset was split into training and test sets (80/20 split). The training set was further divided into training and validation subsets. TensorFlow tf.data.Dataset pipelines were used to prepare and batch the data efficiently.
+The final dataset was split into training and test sets (80/20 split). The training set was further divided into training and validation subsets.
 
 Each sample was represented as:
 
 * Categorical IDs: user_id, video_id, and user attributes
-
 * Dense features: popularity_score, tag_multi_hot
-
 * Target: the log-transformed watch_ratio
 
 ---
@@ -202,11 +196,17 @@ The model consists of the following key components:
 #### Training and Evaluation
 
 I trained the model using the train and validation dataframe, employing early stopping to prevent overfitting. To evaluate the model’s performance, I implemented and used several metrics including NDCG@k, MAE, RMSE, [Serendipity](images/serendipity.png), Popularity, and [Spearman correlation](https://en.wikipedia.org/wiki/Spearman's_rank_correlation_coefficient).
-For the baseline model, which outputs constant predictions for every video, the Spearman correlation is not defined. In this case, I assume a value of 0, representing the model’s complete inability to sort items by relevance.
+* NDCG@k for ranking quality
+* Spearman correlation for ranking consistency.
+* MAE and RMSE for prediction accuracy.
+* Serendipity to measure novelty and diversity.
+* Popularity to detect bias towards popular items.
+
+For the baseline model, which outputs constant predictions for every video, the Spearman correlation is not defined.So in this case, I assume a value of 0, representing the model’s complete inability to sort items by relevance.
 
 #### Hyperparameter Tuning
 
-Given the computational cost of hyperparameter optimization, I focused on **embedding dimension** and **dropout rate** as the main hyperparameters to tune. The **Keras Tuner** was used to perform the hyperparameter search. The hyperparameters tested were:
+I also try to optimize the model’s performance by tuning hyperparameters but given the computational cost of hyperparameter optimization, I focused on **embedding dimension** and **dropout rate** as the main hyperparameters to tune. The **Keras Tuner** was used to perform the hyperparameter search. The hyperparameters tested were:
 
 * **Embedding dimension:** Ranges from 8 to 32 with a step of 8.
 * **Dropout rate:** Ranges from 0.1 to 0.3 to prevent overfitting.
@@ -246,32 +246,40 @@ model = tf.keras.models.load_model('trained_models/NCF-extended.keras')
 ) 
 and use the provided function to generate the top-k recommendations.
 
+Parameters:
+* test_df: DataFrame containing test data (must include user_id, video_id, score_popularity, tag_multi_hot)
+* user_features_df: DataFrame containing user features
+* model: trained model with a .predict method
+* k: number of recommendations to return per user
+
 ---
 
 ### 5. **Results**
 
-For evaluation, I focus exclusively on the big_matrix → small_matrix setup, where the model is trained on the larger, more diverse dataset and tested on the smaller, dense subset.
+For this part, I will focus exclusively on the big_matrix → small_matrix setup, where the model is trained on the larger, more diverse dataset and tested on the smaller, dense subset.
 
 | Model             | NDCG@10 | MAE@10 | RMSE@10 | Serendipity@10 | Avg Popularity@10 | Spearman |
 |-------------------|---------|--------|---------|----------------|-------------------|----------|
 | NCF               | 0.8772  | 0.9249 | 1.3514  | 0.0128         | 1.2288            | 0.6201   |
 | Baseline          | 0.8142  | 0.5043 | 0.6945  | 0.1243         | 1.0871            | 0        |
-| PopularityBaseline| 0.7905  | 1.5349 | 1.7366  | 0.0000         | 1.2464            | 0.2454   |
+| PopularityBaseline| 0.7905  | 0.6311 | 0.9016  | 0.0000         | 1.2464            | 0.2454   |
 
 
 ---
 
-The **NCF model** clearly delivers superior ranking performance over the baseline model, achieving a nearly **10% improvement in NDCG\@10**. This demonstrates its strength in generating top-k recommendations that align with user preferences.
+The **NCF model** clearly delivers superior ranking performance over the baseline models, achieving a nearly **10% improvement in NDCG\@10**.
 
-However, when looking at **MAE** and **RMSE**, the baseline outperforms NCF. This might seem contradictory at first, but is explained by the **distribution of the watch ratio**, which is heavily concentrated around the mean in both training and testing sets (see [train_watch_ratio.png](images/train_watch_ratio.png) and [test_watch_ratio](images/test_watch_ratio.png)). The baseline simply predicts the global mean watch ratio, which minimizes average error in such a skewed distribution — hence, lower MAE/RMSE.
+However, when looking at **MAE** and **RMSE**, the baseline models outperforms NCF. This might seem contradictory at first, but is explained by the **distribution of the watch ratio**, which is heavily concentrated around the mean in both training and testing sets (see [train_watch_ratio.png](images/train_watch_ratio.png) and [test_watch_ratio](images/test_watch_ratio.png)). The baseline simply predicts the global mean watch ratio, which minimizes average error in such a skewed distribution hence lower MAE/RMSE. Similarly, concerning the PopularityBaseline, which ranks videos based on their average popularity: the **popularity scores** are highly concentrated within a narrow range (see [popularity_score.png](images/popularity_score.png)), so the predictions also tend to be close to the mean.
 
-When filtering out extreme values of watch ratio (e.g., above the 85th percentile), **NCF's MAE and RMSE improve**, but at the cost of a slight drop in NDCG. 
+Filtering out extreme values of the watch ratio (e.g., those above the 85th percentile) leads to improved MAE and RMSE for NCF. This improvement, however, comes with a slight decrease in NDCG, reflecting a trade-off between prediction accuracy and ranking quality.
 
-On the **serendipity** and **average popularity** metrics, both models show **limited diversity** in recommendations. The recommendations tend to favor **popular videos**, as reflected in the high popularity scores. This aligns with observations from the ["KuaiRec paper"](https://arxiv.org/pdf/2202.10842), which warns about *popularity bias* in collaborative filtering: users are often exposed to, and trained on, a limited set of popular items, leading models to overfit on them. In our case, most users also watched similar tag categories, particularly tag 28 (see [feats.png](images/feats.png)) which further reinforces the popularity bias.
+Regarding the **serendipity** and **average popularity** metrics, all three models show limited diversity in their recommendations, but with a notable difference. The simple global mean baseline achieves significantly higher serendipity compared to the two more personalized models. This may be because the mean baseline makes non-personalized, neutral predictions, which tend to be less biased and therefore more diverse by nature.
 
-Therefore, while NCF excels in **ranking relevant videos**, it doesn't take much risk in **exploring less popular or niche content**, which slightly limits its ability to diversify recommendations.
+In contrast, the two personalized models strongly favor popular content, as reflected by their high average popularity scores. This trend is consistent with the popularity bias described in the ["KuaiRec paper"](https://arxiv.org/pdf/2202.10842), where collaborative filtering systems tend to overfit popular items since users mostly interact with a limited set of widely consumed content. This bias is further reinforced in our dataset, where users frequently engage with similar tag categories, particularly tag 28 (see [feats.png](images/feats.png)).
 
 Additionally, the NCF model demonstrates a strong overall alignment between predicted video rankings and actual user preferences, confirming its effectiveness in capturing meaningful ranking patterns. In contrast, the global mean baseline cannot differentiate between items and thus fails to produce any meaningful ranking. The Popularity Baseline shows some capacity to rank videos based on popularity but is notably less effective than NCF, which highlights that popularity alone does not necessarily align with individual user preferences.
+
+Therefore, while NCF excels in **ranking relevant videos**, it doesn't take much risk in **exploring less popular or niche content**, which slightly limits its ability to diversify recommendations.
 
 Nonetheless, since the project goal is to **recommend videos that the user is likely to enjoy**, the strong NDCG and Spearman results for NCF suggest that it effectively fulfills this objective.
 
